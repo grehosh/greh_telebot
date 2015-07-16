@@ -1,5 +1,5 @@
 ///////////////////////////////////////
-Safety: Uncomment everything to use //
+//Safety: Uncomment everything to use //
 ///////////////////////////////////////
 
 // dependencies
@@ -15,8 +15,8 @@ var multer = require('multer');
 
 // telegram bot
 var bot = require(__dirname + '/bot.js');
-var token = 'your example token';
-var webhookUrl = 'your webhook url'
+var token = '123199725:AAHzLrleUBIYqVnO0U1CZTzaK4p7FoxKp0E';
+var webhookUrl = 'piscine-bastille-5717.herokuapp.com'
 var bot1 = new bot(process.env.TOKEN || token, process.env.WEBHOOK || webhookUrl);
 
 
