@@ -1,0 +1,7 @@
+vk_api==6.2
+requests
+pyquery
+feedparser
+pytest
+wikipedia
+giphypop
