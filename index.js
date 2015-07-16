@@ -1,59 +1,106 @@
-///////////////////////////////////////
-//Safety: Uncomment everything to use //
-///////////////////////////////////////
+/**
+ * Module dependencies
+ */
+var express = require('express'),
+  bodyParser = require('body-parser'),
+  methodOverride = require('method-override'),
+  errorhandler = require('errorhandler'),
+  morgan = require('morgan'),
+  request = require('request'),
+  path = require('path'),
+  fs = require('fs'),
+  telegramHeper = require('./helper/telegram');
 
-// dependencies
-// express
-var _ = require('lomath');
-var express = require('express');
-var app = express();
-// express middlewares
-var morgan = require('morgan');
-var ejs = require('ejs');
-var bodyParser = require('body-parser');
-var multer = require('multer');
+var app = module.exports = express();
 
-// telegram bot
-var bot = require(__dirname + '/bot.js');
-var token = '123199725:AAHzLrleUBIYqVnO0U1CZTzaK4p7FoxKp0E';
-var webhookUrl = 'piscine-bastille-5717.herokuapp.com'
-var bot1 = new bot(process.env.TOKEN || token, process.env.WEBHOOK || webhookUrl);
-
-
-// engine to render HTML
-app.engine('.html', ejs.__express);
-app.set('view engine', 'html');
-// set the port number
-app.set('port', process.env.PORT || 8443);
-
-// Mount middlewares defaulted for root: 
-// log all HTTP calls for debugging
-// app.use(morgan('combined'));
-// use resources for html: HTML, JS and CSS etc.
-app.use(express.static(__dirname + '/views'));
-// parse incoming formData into JSON
+/**
+ * Configuration
+ */
+app.set('port', process.env.PORT || 5000);
+app.set('views', __dirname + '/views');
+app.set('env', process.env.NODE_ENV || 'development');
+app.set('view engine', 'jade');
+app.use(morgan('dev'));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use(multer());
+app.use(methodOverride());
+app.use(express.static(path.join(__dirname, 'public')));
+//LOAD CONFIG FILE
+var TELEGRAM_COMF = JSON.parse(fs.readFileSync(path.join(__dirname,'/config/telegram.json')), 'utf8');
+
+//CREATE TELEGRAM HELPER AND SET WEBHOOK
+var telegram = new telegramHeper(TELEGRAM_COMF.token);
+telegram.getMe(function(data){
+  if (data)
+    TELEGRAM_COMF.bot_name = '@'+data.username;
+});
+telegram.setWebHook(TELEGRAM_COMF.webhook_url);
+
+/**
+ * Routes
+ */
+app.get('/',function(req,res,next){
+  res.send('Working!');
+});
+
+app.post('/update', function(req, res, next) {
+  console.log('update!  %j', req.body);
+
+  //parse all variable
+  var message = req.body.message;
+  var chatId = message.chat.id;
+  var fromId = message.from.id;
+  var messageId = message.message_id;
+  var text = message.text.split(' ');
+
+  var cmd = text[0].split(TELEGRAM_COMF.bot_name)[0];
+  var option = text.slice(1);
+  console.log('command: '+cmd);
+  switch (cmd) {
+    case '/hello':
+      telegram.sendMessage(chatId, 'Hello World! '+ (option[0] || '') );
+      break;
+    case '/help':
+      telegram.sendMessage(chatId,'list of command:');
+      break;
+  }
+
+  res.send('ok');
+});
 
 
-// route: concise way to group all HTTP methods for a path
-app.route('/')
-    .get(function(req, res) {
-        // console.log("you GET")
-        res.render('index')
-    })
-    .post(function(req, res) {
-        // send back to end req-res cycle
-        res.json('okay, received\n');
-        // robot handle as middleware for POST
-        bot1.handle(req, res)
-    })
-    .put(function(req, res) {
-        res.send("you just called PUT\n")
-    })
+/**
+ * ERROR
+ */
+// catch 404 and forward to error handler
+app.use(function(req, res, next) {
+  var err = new Error('Not Found');
+  err.status = 404;
+  next(err);
+});
 
+// development only
+if (app.get('env') === 'development') {
+  app.use(errorhandler());
+}
 
-// finally, listen to the specific port for any calls
-app.listen(app.get('port'), function() {
-    console.log('Node app is running on port', app.get('port'));
+// production only
+if (app.get('env') === 'production') {
+  // production error handler
+  // no stacktraces leaked to user
+  app.use(function(err, req, res, next) {
+    console.log(err);
+    res.status(err.status = (err.status || 500));
+    res.render('error', {
+      message: err.message,
+      error: {}
+    });
+  });
+}
+
+/**
+ * Start Server
+ */
+app.listen(app.get('port'), function () {
+  console.log('Express server listening on port ' + app.get('port'));
 });
